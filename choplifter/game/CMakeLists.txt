@@ -1,0 +1,20 @@
+cmake_minimum_required(VERSION 3.0)
+project(Choplifter)
+set(TARGET ${PROJECT_NAME}) 
+
+find_package(AmigaUtils CONFIG REQUIRED)
+enable_language(AMIGA_VASM)
+
+set(CMAKE_AMIGA_VASM_FLAGS "${CMAKE_AMIGA_VASM_FLAGS} -I${CMAKE_SOURCE_DIR}/game/include")
+
+set(SOURCES
+    main.s
+)
+
+add_subdirectory(intro)
+
+set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE AMIGA_VASM)
+
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
+add_executable(${TARGET} ${SOURCES})
+target_link_libraries(${TARGET} AmigaUtils)
