@@ -124,6 +124,35 @@ uLongToString:
 ; ##############################################
 ; ##############################################
 ; ##############################################
+sWordToString:
+    btst    #15,d0
+    beq.s   uWordToString
+
+    neg.w    d0
+
+    ; If this is a nullptr we can not add the sign.
+    exg     d0,a0
+    tst.w   d0
+    exg     d0,a0
+    beq.s   .AddLength
+
+    ; If bufferlength is zero we can not add the sign
+    tst.l   d1
+    beq.s   .AddLength
+
+    move.b  #'-',(a0)+
+    subq    #1,d1
+    
+.AddLength:
+    jsr     uWordToString
+    addq    #1,d0
+    beq.s   .Error          ; If an error is returned we must restore it
+    rts
+
+.Error:
+    subq    #1,d0
+    rts
+
 
 uwordToString:
     move.l  a0,a1
