@@ -23,6 +23,9 @@ static int gWindowWidth = 640;
 static int gWindowHeight = 256;
 static int gInterval = 1000 / 60;
 
+static int gRacketSpeed = 3;
+float gRacketX = 10.0f;
+
 static float gEyeDistance = 500.0;			// Eye to screen distance
 static float gProjDistance = 200.0;		// Screen to projection distance
 
@@ -70,6 +73,15 @@ static void prepareVertices(void)
 	gVertices.push_back(Vertex3D(10.0, 2.0, 2.0));
 	gVertices.push_back(Vertex3D(20.0, 1.0, 2.0));
 	gVertices.push_back(Vertex3D(20.0, 2.0, 2.0));*/
+}
+
+void keyboard()
+{
+	if (GetAsyncKeyState(VK_UP))
+		gRacketX += gRacketSpeed;
+
+	if (GetAsyncKeyState(VK_DOWN))
+		gRacketX -= gRacketSpeed;
 }
 
 void drawText(float x, float y, string text)
