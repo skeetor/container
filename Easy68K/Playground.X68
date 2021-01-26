@@ -11,14 +11,15 @@ START:                  ; first instruction of program
 
 	jsr		init
 
-	movem.l	d2-d3/d7,-(sp)
-	movem.l	(sp)+,d2-d3/d7
-	
 	movem.l	d2/d7,-(sp)
-	movem.l	(sp)+,d2/d7
+	movem.l a2,-(sp)
 
+	moveq	#-1,d2
+	move.l	d2,d7
+	move.l	d2,a2
 	
-
+	movem.l	(sp)+,d0/d2/d7
+	
     SIMHALT             ; halt simulator
 
 init:

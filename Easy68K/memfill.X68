@@ -20,7 +20,7 @@ START:                  ; first instruction of program
 	lea		MemL,a2
 	;add.l	#1,a2
 	move.l	#$33,d1			; Fillbyte
-	move.l	#16,d2			; Length
+	move.l	#18,d2			; Length
 	jsr		memfill
 
     SIMHALT             ; halt simulator
@@ -84,7 +84,7 @@ memfill:
 	move.l	a1,d0
 	cmp.w	#8,d0
 	ble		.4Byte
-	
+
 	; In case of a big move we need to ensure that the
 	; end address will also be even.
 	move.l	a0,d2
@@ -98,6 +98,7 @@ memfill:
 	move.b	d1,-(a1)
 	
 .EvenBig:
+	bra		.8Byte
 	moveq	#32,d7
 	cmp.l	d7,d0
 	ble		.16Byte
@@ -150,27 +151,29 @@ memfill:
 	cmp.l	d7,d0
 	ble		.4Byte
 
-	move.l	d3,a2
-	move.l	d0,d1
-	and.b	#7,d1
+	movem.l	a2,-(sp)
+	move.l	d1,a2
+	move.l	d0,d2
+	and.b	#7,d2
 	bne		.Start8ByteLoop
 
 .8ByteLoop:
-	movem.l	d3/a2,-(a1)
+	movem.l	d1/a2,-(a1)
 
 .Start8ByteLoop:
 	sub.l	d7,d0
-	beq		.Done
+	beq		.DoneClrStk8
 	bpl		.8ByteLoop
 
 	add.l	d7,d0
+	movem.l	(sp)+,a2
 
 .4Byte:
 	moveq	#4,d7
-	exg		a1,d3
-	move.l	d0,d3
-	and.b	#3,d3
-	exg		a1,d3
+	exg		a1,d1
+	move.l	d0,d1
+	and.b	#3,d1
+	exg		a1,d1
 	bne		.Start4ByteLoop
 
 .4ByteLoop:
@@ -196,6 +199,14 @@ memfill:
 	movem.l	(sp)+,d2/d7
 	rts
 
+.DoneClrStk8:
+	; Since A2 would be in the wrong position, we have to take
+	; a detour via D0, which is faster then using a seperate
+	; restore for A2 using the stackpointer.
+	movem.l	(sp)+,d0/d2/d7
+	move.l	d0,a2
+	rts
+	
 ; 466
 
 * Put variables and constants here
