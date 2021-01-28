@@ -20,7 +20,7 @@ START:                  ; first instruction of program
 	lea		MemL,a2
 	;add.l	#1,a2
 	move.l	#$33,d1			; Fillbyte
-	move.l	#18,d2			; Length
+	move.l	#65,d2			; Length
 	jsr		memfill
 
     SIMHALT             ; halt simulator
@@ -98,10 +98,11 @@ memfill:
 	move.b	d1,-(a1)
 	
 .EvenBig:
-	bra		.8Byte
 	moveq	#32,d7
 	cmp.l	d7,d0
 	ble		.16Byte
+
+	movem.l	d3-d6/a2-a5,-(sp)
 
 	move.l	d1,a2
 	move.l	d1,a3
@@ -120,31 +121,35 @@ memfill:
 
 .Start32ByteLoop:
 	sub.l	d7,d0
-	beq		.Done
+	beq		.DoneClrStk32
 	bpl		.32ByteLoop
 	add.l	d7,d0
-
+	movem.l	(sp)+,d3-d6/a2-a5
+	
 .16Byte:
 	moveq	#16,d7
 	cmp.l	d7,d0
 	ble		.8Byte
 
-	move.l	d3,a2
-	move.l	d3,a3
-	move.l	d3,d2
-	move.l	d0,d1
-	and.b	#15,d1
+	movem.l	d3/a2-a3,-(sp)
+
+	move.l	d1,a2
+	move.l	d1,a3
+	move.l	d1,d2
+	move.l	d0,d3
+	and.b	#15,d3
 	bne		.Start16ByteLoop
 
 .16ByteLoop:
-	movem.l	d2-d3/a2-a3,-(a1)
+	movem.l	d1-d2/a2-a3,-(a1)
 
 .Start16ByteLoop:
 	sub.l	d7,d0
-	beq		.Done
+	beq		.DoneClrStk16
 	bpl		.16ByteLoop
 
 	add.l	d7,d0
+	movem.l	(sp)+,d3/a2-a3
 
 .8Byte:
 	moveq	#8,d7
@@ -203,10 +208,20 @@ memfill:
 	; Since A2 would be in the wrong position, we have to take
 	; a detour via D0, which is faster then using a seperate
 	; restore for A2 using the stackpointer.
-	movem.l	(sp)+,d0/d2/d7
-	move.l	d0,a2
+	movem.l		(sp)+,d0/d2/d7
+	move.l		d0,a2
 	rts
-	
+
+.DoneClrStk16:
+	movem.l		(sp)+,d3/a2-a3
+	movem.l		(sp)+,d2/d7
+	rts
+
+.DoneClrStk32:
+	movem.l	(sp)+,d3-d6/a2-a5
+	movem.l		(sp)+,d2/d7
+	rts
+
 ; 466
 
 * Put variables and constants here
