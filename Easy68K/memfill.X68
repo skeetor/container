@@ -17,14 +17,14 @@ START:                  ; first instruction of program
 	; 1024:3570/32
 
 	jsr		init
-	lea		MemL,a2
+	lea		Buffer,a2
 	;add.l	#1,a2
 	move.l	#$33,d1			; Fillbyte
-	move.l	#65,d2			; Length
+	move.l	#256,d2			; Length
 	jsr		memfill
 
     SIMHALT             ; halt simulator
-
+	
 init:
 	move.l	#$10000000,d0
 	move.l	#$10000001,d1
@@ -45,15 +45,14 @@ init:
 	rts	
 
 memfill:
-	tst.l	d2
+	move.l	d2,a1
 	beq		.Done
 
 	move.l	a2,a0
-	moveq	#15,d0
-	move.l	d0,a1
-	move.l	d2,d0
-	cmp.l	a1,d0
-	ble		.ByteLoop
+	moveq	#8,d0
+	cmp.l	d0,d2
+	exg		a1,d0
+	ble		.ByteLoopStart
 
 	move.l	d2,a1
 	move.l	a0,d0
@@ -64,11 +63,6 @@ memfill:
 	subq	#1,a1
 
 .Even:
-	moveq	#15,d0
-	exg		a1,d0
-	cmp.l	a1,d0
-	ble		.ByteLoop
-
 	movem.l	d2/d7,-(sp)
 
 	; Extend the fillbyte so we can use it also in DWORD
@@ -79,30 +73,32 @@ memfill:
 	move.b	d0,d1
 	move.w	d1,d0
 	swap	d1
-	move.w	d0,d1
-
-	move.l	a1,d0
-	cmp.w	#8,d0
-	ble		.4Byte
-
+	move.w	d0,d1	; Fillbyte is now repeated in d1 i.e. $33 -> $3333 3333
+	move.l	d2,d0
+	
 	; In case of a big move we need to ensure that the
 	; end address will also be even.
 	move.l	a0,d2
-	add.l	a1,d2
+	add.l	d0,d2		; End of fillbuffer
 	move.l	d2,a1
 	btst	#0,d2
 	beq		.EvenBig
 
-	moveq	#1,d7
-	sub.l	d7,d0
+	subq.l	#1,d0
 	move.b	d1,-(a1)
 	
 .EvenBig:
-	moveq	#32,d7
+	move.l	#10000,d7
 	cmp.l	d7,d0
 	ble		.16Byte
 
-	movem.l	d3-d6/a2-a5,-(sp)
+	movem.l	d4-d6/a2-a5,-(sp)
+
+	move.l	d0,d2
+	lsr.l	#5,d0
+	move.l	d0,d4
+	lsl.l	#5,d4
+	sub.l	d4,d7
 
 	move.l	d1,a2
 	move.l	d1,a3
@@ -112,22 +108,17 @@ memfill:
 	move.l	d1,d5
 	move.l	d1,d6
 
-	move.l	d0,d3
-	and.b	#$1f,d3
-	bne		.Start32ByteLoop
+	bra.s	.Start32ByteLoop
 
 .32ByteLoop:
 	movem.l	d1/d4-d6/a2-a5,-(a1)
 
 .Start32ByteLoop:
-	sub.l	d7,d0
-	beq		.DoneClrStk32
-	bpl		.32ByteLoop
-	add.l	d7,d0
-	movem.l	(sp)+,d3-d6/a2-a5
-	
+	dbt		d0,.32ByteLoop
+	movem.l	(sp)+,d4-d6/a2-a5
+
 .16Byte:
-	moveq	#16,d7
+	move.l	#10000,d7
 	cmp.l	d7,d0
 	ble		.8Byte
 
@@ -152,64 +143,55 @@ memfill:
 	movem.l	(sp)+,d3/a2-a3
 
 .8Byte:
-	moveq	#8,d7
-	cmp.l	d7,d0
+	cmp.l	#255,d0
 	ble		.4Byte
 
 	movem.l	a2,-(sp)
-	move.l	d1,a2
+
 	move.l	d0,d2
-	and.b	#7,d2
-	bne		.Start8ByteLoop
+	lsr.l	#3,d0
+	move.l	d0,d7
+	lsl.l	#3,d7
+	sub.l	d7,d2
+
+	move.l	d1,a2
+	bra.s	.8ByteLoopStart
 
 .8ByteLoop:
 	movem.l	d1/a2,-(a1)
 
-.Start8ByteLoop:
-	sub.l	d7,d0
-	beq		.DoneClrStk8
-	bpl		.8ByteLoop
+.8ByteLoopStart:
+	dbf		d0,.8ByteLoop
 
-	add.l	d7,d0
 	movem.l	(sp)+,a2
+	move.l	d2,d0
+	beq.s	.DoneClrStk8
 
 .4Byte:
-	moveq	#4,d7
-	exg		a1,d1
-	move.l	d0,d1
-	and.b	#3,d1
-	exg		a1,d1
-	bne		.Start4ByteLoop
+	move.l	d0,d2
+	lsr.l	#2,d0
+	move.l	d0,d7
+	lsl.l	#2,d7
+	sub.l	d7,d2
+
+	bra.s	.4ByteLoopStart
 
 .4ByteLoop:
 	move.l	d1,(a0)+
 
-.Start4ByteLoop:
-	sub.l	d7,d0
-	beq		.DoneClrStk4
-	bpl		.4ByteLoop
-	add.l	d7,d0
+.4ByteLoopStart:
+	dbf		d0,.4ByteLoop
 
+	move.l	d2,d0
 	movem.l	(sp)+,d2/d7
+	bra.s	.ByteLoopStart
 
 .ByteLoop:
 	move.b	d1,(a0)+
-	subq	#1,d0
-	bne		.ByteLoop
+.ByteLoopStart:
+	dbf		d0,.ByteLoop
 
 .Done:
-	rts
-
-.DoneClrStk4:
-	movem.l	(sp)+,d2/d7
-	rts
-
-.DoneClrStk8:
-	; Since A2 would be in the wrong position, we have to take
-	; a detour via D0, which is faster then using a seperate
-	; restore for A2 using the stackpointer.
-	movem.l		(sp)+,d0/d2/d7
-	move.l		d0,a2
 	rts
 
 .DoneClrStk16:
@@ -219,29 +201,22 @@ memfill:
 
 .DoneClrStk32:
 	movem.l	(sp)+,d3-d6/a2-a5
-	movem.l		(sp)+,d2/d7
+
+.DoneClrStk8:
+	movem.l	(sp)+,d2/d7
 	rts
 
-; 466
+; 838
 
 * Put variables and constants here
 
-    ORG    (*+15)&-16
-Mem3Start:	dc.b 'M3ST'
-Mem3:	dc.b	3,3,3
-Mem3End:	dc.b 'M3EN'
-
-    ORG    (*+15)&-16
-Mem4Start:	dc.b 'M4ST'
-Mem4:	dc.b	4,4,4,4
-Mem4End:	dc.b 'M4EN'
-
-    ORG    (*+15)&-16
-MemLStart:	dc.b 'MLST'
-MemL:	ds.b	1024
-MemLEnd:	dc.b 'MLEN'
+	ORG    (*+15)&-16
+BufferStart:	dc.b 'MLST'
+Buffer:	ds.b	1024
+BufferEnd:	dc.b 'MLEN'
 
     END    START        ; last line of source
+
 
 
 
