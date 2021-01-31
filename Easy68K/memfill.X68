@@ -49,7 +49,7 @@ memfill:
 	beq		.Done
 
 	move.l	a2,a0
-	moveq	#8,d0
+	moveq	#23,d0
 	exg		a1,d0
 	cmp.l	a1,d2
 	ble		.ByteLoopStart
@@ -110,7 +110,7 @@ memfill:
 	bra.s	.4Byte
 
 .16Byte:
-	moveq.l	#46,d2
+	moveq.l	#47,d2
 	cmp.l	d2,d0
 	ble		.4Byte
 
@@ -181,8 +181,6 @@ memfill:
 	movem.l	(sp)+,d2/d7
 	rts
 
-; 838
-
 * Put variables and constants here
 
 	ORG    (*+15)&-16
@@ -191,6 +189,7 @@ Buffer:	ds.b	1024
 BufferEnd:	dc.b 'MLEN'
 
     END    START        ; last line of source
+
 
 
 
